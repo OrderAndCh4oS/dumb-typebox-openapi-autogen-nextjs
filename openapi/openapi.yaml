@@ -1,0 +1,62 @@
+openapi: 3.0.0
+info:
+  title: My API
+  version: 1.0.0
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+security:
+  - BearerAuth: []
+paths:
+  /api/name:
+    post:
+      summary: Returns the full name for a given first/last name
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: false
+              type: object
+              properties:
+                firstName:
+                  description: User's first name
+                  type: string
+                lastName:
+                  description: User's last name
+                  type: string
+                surname:
+                  description: User's surname
+                  deprecated: true
+                  type: string
+              required:
+                - firstName
+                - lastName
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                additionalProperties: false
+                type: object
+                properties:
+                  fullName:
+                    type: string
+                required:
+                  - fullName
+        '400':
+          description: Invalid request or server validation error
+          content:
+            application/json:
+              schema:
+                additionalProperties: false
+                type: object
+                properties:
+                  title:
+                    type: string
+                required:
+                  - title
+        '405':
+          description: Method not allowed
