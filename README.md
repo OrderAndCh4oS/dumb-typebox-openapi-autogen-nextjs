@@ -1,41 +1,191 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# NextJS TypeBox AJV to OpenAPI Spec
 
-## Getting Started
+A simple Next.js project that shows how to use TypeBox, AJV, and OpenAPI together to build better APIs.
 
-First, run the development server:
+## What This Project Does
+
+This project helps you build APIs by connecting three useful tools:
+
+- **TypeBox**: Helps define data structures in TypeScript
+- **AJV**: Checks if data is valid
+- **OpenAPI**: Creates documentation for your API
+
+With this setup, you only need to define your data structures once, and you'll get:
+1. TypeScript types for code completion
+2. Data validation
+3. API documentation
+
+## Setup Instructions
 
 ```bash
+# Get the code
+git clone https://github.com/yourusername/nextjs-typebox-ajv-to-openapi-spec.git
+cd nextjs-typebox-ajv-to-openapi-spec
+
+# Install packages
+npm install
+
+# Start the development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+## How It Works
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+### 1. Define Your Data Structure with TypeBox
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+TypeBox lets you define what your data should look like:
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```typescript
+import { Static, Type } from "@sinclair/typebox";
+
+// Define what the request data should include
+export const bodySchema = Type.Object({
+    firstName: Type.String({description: "User's first name"}),
+    lastName: Type.String({description: "User's last name"}),
+    surname: Type.Optional(Type.String({description: "User's surname", deprecated: true})),
+}, {additionalProperties: false});
+
+// Get a TypeScript type from this definition
+type Body = Static<typeof bodySchema>
+```
+
+### 2. Validate Data with AJV
+
+AJV checks if the data you receive matches your definition:
+
+```typescript
+import ajv from "@/avj";
+
+// Create a validator
+const bodyValidator = ajv.compile<Body>(bodySchema);
+
+// Check if data is valid
+if (!bodyValidator(req.body)) {
+    return res.status(400).json({title: "Invalid body"});
+}
+```
+
+The AJV setup is simple:
+
+```typescript
+import addFormats from 'ajv-formats'
+import Ajv from "ajv";
+
+const ajv = addFormats(new Ajv({strict: true}), [
+    'date-time', 'time', 'date', 'email', 'hostname', 'ipv4', 'ipv6',
+    'uri', 'uri-reference', 'uuid', 'uri-template', 'json-pointer',
+    'relative-json-pointer', 'regex'
+]);
+
+export default ajv;
+```
+
+### 3. Generate API Documentation with OpenAPI
+
+The project automatically creates API documentation from your TypeBox definitions:
+
+Example API endpoint definition:
+
+```typescript
+export const nameSpec: OpenAPIV3.PathItemObject = {
+    post: {
+        summary: "Returns the full name for a given first/last name",
+        requestBody: {
+            content: {"application/json": {schema: bodySchema}},
+        },
+        responses: {
+            "200": {
+                description: "Success",
+                content: {"application/json": {schema: responseSchema}},
+            },
+            "400": {
+                description: "Invalid request",
+                content: {"application/json": {schema: errorSchema}},
+            },
+            "405": {
+                description: "Method not allowed",
+            },
+        },
+    }
+};
+```
+
+To create the OpenAPI documentation:
+
+```bash
+npx tsx openapi/make-spec.ts
+```
+
+This runs a script that collects all your API definitions and creates a complete OpenAPI document.
+
+#### How to Add Your API Endpoints to the Documentation
+
+The `openapi/make-spec.ts` file is where you define all your API paths and import your endpoint specifications:
+
+```typescript
+import fs from 'fs';
+import {dump} from 'js-yaml';
+// Import your endpoint specs here
+import {nameSpec} from "@/pages/api/name";
+// Import any other endpoint specs you create
+// import {userSpec} from "@/pages/api/user";
+import type {OpenAPIV3} from "openapi-types";
+
+const openApiSpec: OpenAPIV3.Document = {
+    // OpenAPI metadata...
+    paths: {
+        // Define your API paths here
+        "/api/name": nameSpec,
+        // "/api/user": userSpec,
+    },
+};
+
+fs.writeFileSync('openapi.yaml', dump(openApiSpec));
+```
+
+For each new API endpoint you create:
+1. Export the endpoint specification from your API file (like `nameSpec` in the example)
+2. Import it in `make-spec.ts`
+3. Add it to the `paths` object with the correct URL path
+
+### 4. Ensure Data Matches Your Schema
+
+TypeBox includes a helpful tool to make sure your data follows your schema:
+
+```typescript
+import {Value} from "@sinclair/typebox/value";
+
+// Make sure the data follows the schema
+const response = Value.Cast(responseSchema, payload);
+```
+
+This helps:
+- Remove extra properties
+- Convert data types when needed
+- Make sure your API responses match your documentation
+
+## Example Code
+
+Check out `src/pages/api/name.ts` for a complete example showing:
+1. How to define a schema
+2. How to validate incoming data
+3. How to document your API
+4. How to handle requests
+5. How to format responses
+
+## Why This Approach Is Helpful
+
+- **Write Once, Use Everywhere**: Define your data structure once and use it for types, validation, and documentation
+- **Fewer Bugs**: Catch errors early with TypeScript
+- **Data Validation**: Make sure the data you receive is valid
+- **Good Documentation**: Automatically create API documentation
+- **Client Generation**: Use the documentation to create API clients in different programming languages
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
-# dumb-typebox-openapi-autogen-nextjs
+- [TypeBox Documentation](https://github.com/sinclairzx81/typebox)
+- [AJV Documentation](https://ajv.js.org/)
+- [OpenAPI Specification](https://swagger.io/specification/)
+- [Next.js Documentation](https://nextjs.org/docs)
