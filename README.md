@@ -1,4 +1,4 @@
-# NextJS TypeBox AJV to OpenAPI Spec
+# Dumb Typebox Openapi Autogen with NextJS
 
 A simple Next.js project that shows how to use TypeBox, AJV, and OpenAPI together to build better APIs.
 
